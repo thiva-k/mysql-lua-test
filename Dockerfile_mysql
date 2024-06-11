@@ -1,0 +1,4 @@
+# Use the official MySQL image
+FROM mysql:latest
+
+# Add your custom configurations, if any

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:latest
+    command: --mysql-native-password=ON
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: rate_limits
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+      
+  lua:
+    build:
+      context: .
+      dockerfile: Dockerfile_lua
+    depends_on:
+      - mysql
+    ports:
+      - "8000:8000"  # Map MySQL port

@@ -1,0 +1,59 @@
+# Use Alpine Linux as a base image
+FROM frolvlad/alpine-glibc
+
+# Set environment variables for Lua and LuaRocks versions
+ENV LUA_VERSION=5.4.4
+ENV LUAROCKS_VERSION=3.8.0
+
+# Install necessary dependencies
+RUN apk --no-cache add build-base wget tar openssl-dev readline-dev lua lua-dev mysql-dev unzip openssl
+
+# Download and install Lua
+WORKDIR /lua-${LUA_VERSION}
+RUN wget http://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz && \
+    tar -zxf lua-${LUA_VERSION}.tar.gz && \
+    cd lua-${LUA_VERSION} && \
+    make linux test && \
+    make install && \
+    cd .. && \
+    rm -rf lua-${LUA_VERSION} lua-${LUA_VERSION}.tar.gz
+
+# Install LuaRocks
+WORKDIR /luarocks-$LUAROCKS_VERSION
+RUN wget https://luarocks.github.io/luarocks/releases/luarocks-${LUAROCKS_VERSION}.tar.gz && \
+    tar -zxf luarocks-${LUAROCKS_VERSION}.tar.gz && \
+    cd luarocks-${LUAROCKS_VERSION} && \
+    ./configure --with-lua=/usr/local --with-lua-include=/usr/local/include --with-lua-lib=/usr/local/lib && \
+    make build && \
+    make install && \
+    cd .. && \
+    rm -rf luarocks-${LUAROCKS_VERSION} luarocks-${LUAROCKS_VERSION}.tar.gz
+
+
+COPY sha1.lua /usr/local/share/lua/5.1/sha1.lua
+COPY glue.lua /usr/local/share/lua/5.1/glue.lua
+COPY errors.lua /usr/local/share/lua/5.1/errors.lua
+COPY sock.lua /usr/local/share/lua/5.1/sock.lua
+COPY heap.lua /usr/local/share/lua/5.1/heap.lua
+COPY coro.lua /usr/local/share/lua/5.1/coro.lua
+COPY time.lua /usr/local/share/lua/5.1/time.lua
+
+# Copy the mysql.lua library into the container
+COPY mysql.lua /usr/local/share/lua/5.1/mysql.lua
+
+# Set the working directory in the container
+WORKDIR /usr/src/app
+
+
+# Copy the Lua script into the container
+COPY your_script.lua .
+
+# Copy Envoy binary into the container
+COPY envoy /envoy
+RUN chmod +x /envoy
+
+# Copy Envoy configuration file
+COPY envoy.yaml /etc/envoy.yaml
+
+# Run Envoy
+CMD ["/envoy", "-l", "info", "-c", "/etc/envoy.yaml", "--service-node", "front-node", "--service-cluster", "front-cluster"]
