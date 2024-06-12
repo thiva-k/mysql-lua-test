@@ -1,24 +1,26 @@
-local luasql = require("luasql.mysql")
+local mysql = require 'mysql'
 os.execute("sleep 5")
 
 -- Create MySQL connection
-local env = assert(luasql.mysql())
-local con = assert(env:connect("your_database", "your_user", "your_password", "mysql", 3306))
 
--- Query example (replace with your actual query)
-local query = "SELECT VERSION() AS version"
-local cur = assert(con:execute(query))
+assert(mysql.connect{
+	host = 'mysql',
+	port = 3306,
+	user = 'root',
+	password = 'root',
+	db = 'rate_limits',
+	charset = 'utf8mb4',
+	max_packet_size = 1024 * 1024,
+})
 
--- Fetch the results
-local row = cur:fetch({}, "a")
-if row then
-    -- Print the result
-    print("MySQL version:", row.version)
-else
-    print("No results found for query:", query)
-end
+assert(cn:query('drop table if exists cats'))
 
--- Close the resources
-cur:close()
-con:close()
-env:close()
+local res = assert(cn:query('create table cats '
+			  .. '(id serial primary key, '
+			  .. 'name varchar(5))'))
+
+local res = assert(cn:query('insert into cats (name) '
+	.. "values ('Bob'),(''),(null)"))
+
+print(res.affected_rows, ' rows inserted into table cats ',
+		'(last insert id: ', res.insert_id, ')')

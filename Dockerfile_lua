@@ -6,7 +6,7 @@ ENV LUA_VERSION=5.4.4
 ENV LUAROCKS_VERSION=3.8.0
 
 # Install necessary dependencies
-RUN apk --no-cache add build-base wget tar openssl-dev readline-dev lua lua-dev mysql-dev unzip openssl
+RUN apk --no-cache add build-base wget tar readline-dev lua lua-dev mariadb-dev  unzip
 
 # Download and install Lua
 WORKDIR /lua-${LUA_VERSION}
@@ -29,21 +29,27 @@ RUN wget https://luarocks.github.io/luarocks/releases/luarocks-${LUAROCKS_VERSIO
     cd .. && \
     rm -rf luarocks-${LUAROCKS_VERSION} luarocks-${LUAROCKS_VERSION}.tar.gz
 
-
+# Copy the mysql.lua library into the container
+COPY mysql.lua /usr/local/share/lua/5.4/mysql.lua
+COPY mysql.lua /usr/local/share/lua/5.1/mysql.lua
+COPY coro.lua /usr/local/share/lua/5.1/coro.lua
 COPY sha1.lua /usr/local/share/lua/5.1/sha1.lua
+COPY sock.lua /usr/local/share/lua/5.1/sock.lua
+COPY time.lua /usr/local/share/lua/5.1/time.lua
 COPY glue.lua /usr/local/share/lua/5.1/glue.lua
 COPY errors.lua /usr/local/share/lua/5.1/errors.lua
 COPY sock.lua /usr/local/share/lua/5.1/sock.lua
 COPY heap.lua /usr/local/share/lua/5.1/heap.lua
-COPY coro.lua /usr/local/share/lua/5.1/coro.lua
-COPY time.lua /usr/local/share/lua/5.1/time.lua
-
-# Copy the mysql.lua library into the container
-COPY mysql.lua /usr/local/share/lua/5.1/mysql.lua
+COPY sha1.lua /usr/local/share/lua/5.4/sha1.lua
+COPY sock.lua /usr/local/share/lua/5.4/sock.lua
+COPY time.lua /usr/local/share/lua/5.4/time.lua
+COPY glue.lua /usr/local/share/lua/5.4/glue.lua
+COPY errors.lua /usr/local/share/lua/5.4/errors.lua
+COPY sock.lua /usr/local/share/lua/5.4/sock.lua
+COPY heap.lua /usr/local/share/lua/5.4/heap.lua
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
-
 
 # Copy the Lua script into the container
 COPY your_script.lua .
@@ -57,3 +63,4 @@ COPY envoy.yaml /etc/envoy.yaml
 
 # Run Envoy
 CMD ["/envoy", "-l", "info", "-c", "/etc/envoy.yaml", "--service-node", "front-node", "--service-cluster", "front-cluster"]
+#CMD ["lua", "your_script.lua"]

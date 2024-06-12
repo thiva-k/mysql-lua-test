@@ -24,47 +24,75 @@ static_resources:
                           route:
                             cluster: web_service
                 http_filters:
-                  # Ensure Lua filter is applied first
                   - name: envoy.filters.http.lua
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
                       inline_code: |
                         local mysql = require 'mysql'
-
-                        local params = {
-                            host = 'mysql',
-                            port = 3306,
-                            user = 'root',
-                            password = 'root',
-                            db = 'rate_limits',
-                            charset = 'utf8',
-                        }
-
-                        function perform_mysql_query(request_handle)
-                            request_handle:logInfo("Trying to connect to MySQL...")
-                            assert(mysql.connect{
-                            host = 'mysql',
-                            port = 3306,
-                            user = 'root',
-                            password = 'root',
-                            db = 'rate_limits',
-                            charset = 'utf8',
-                            })
-
-                            request_handle:logInfo("MySQL connection successful!")
-
-                            -- Perform your queries here
-                        end
+                        local sock = require 'sock'
 
                         function envoy_on_request(request_handle)
-                            -- Offload MySQL query to a coroutine
-                            local co = coroutine.create(perform_mysql_query)
-                            local success, result = coroutine.resume(co, request_handle)
-                            if not success then
-                                request_handle:logWarn("Coroutine creation error: ", result)
+                            request_handle:logInfo('envoy_on_request started')
+                            
+                            sock.newthread(function()
+                                request_handle:logInfo('Inside sock.newthread')
+                                
+                                local cn, err
+                                -- Create MySQL connection
+                                request_handle:logInfo('Creating MySQL connection')
+                                cn, err = mysql.connect{
+                                    host = 'mysql',
+                                    port = 3306,
+                                    user = 'root',
+                                    password = 'root',
+                                    db = 'rate_limits',
+                                    charset = 'utf8mb4',
+                                    max_packet_size = 1024 * 1024,
+                                }
+                                if not cn then
+                                    request_handle:logInfo('MySQL connection failed: ' .. err)
+                                    return
+                                end
+                                request_handle:logInfo('MySQL connection created')
+                                
+                                local res
+                                res, err = cn:query('drop table if exists cats')
+                                if not res then
+                                    request_handle:logInfo('Drop table query failed: ' .. err)
+                                    cn:close()
+                                    return
+                                end
+                                request_handle:logInfo('Dropped table if exists')
+
+                                res, err = cn:query('create table cats (id serial primary key, name varchar(5))')
+                                if not res then
+                                    request_handle:logInfo('Create table query failed: ' .. err)
+                                    cn:close()
+                                    return
+                                end
+                                request_handle:logInfo('Created table cats')
+
+                                res, err = cn:query('insert into cats (name) values (\'Bob\'),(\'\'),(null)')
+                                if not res then
+                                    request_handle:logInfo('Insert query failed: ' .. err)
+                                    cn:close()
+                                    return
+                                end
+                                request_handle:logInfo(string.format('%d rows inserted into table cats (last insert id: %d)', res.affected_rows, res.insert_id))
+
+                                -- Close the connection
+                                cn:close()
+                                request_handle:logInfo('Closed MySQL connection')
+                            end)
+                            
+                            -- Start polling for I/O events
+                            local ok, err = pcall(sock.start, 1)
+                            if not ok then
+                                request_handle:logInfo('sock.start failed: ' .. err)
+                            else
+                                request_handle:logInfo('sock.start called successfully')
                             end
                         end
-                  # HTTP router filter should be the last one
                   - name: envoy.filters.http.router
                     typed_config: 
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
