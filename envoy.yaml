@@ -29,46 +29,22 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
                       inline_code: |
-                        local mysql = require 'mysql'
 
-                        local params = {
-                            host = 'mysql',
-                            port = 3306,
-                            user = 'root',
-                            password = 'root',
-                            db = 'rate_limits',
-                            charset = 'utf8',
-                        }
+                        package.cpath = package.cpath .. ';/usr/local/lib/lua/5.1/?.so'
+                        package.path = package.path .. ';/usr/local/lib/lua/5.1/?.so'
+                        local mysql = require "luasql.mysql"
 
-                        function perform_mysql_query(request_handle)
-                            request_handle:logInfo("Trying to connect to MySQL...")
-                            assert(mysql.connect{
-                            host = 'mysql',
-                            port = 3306,
-                            user = 'root',
-                            password = 'root',
-                            db = 'rate_limits',
-                            charset = 'utf8',
-                            })
-
-                            request_handle:logInfo("MySQL connection successful!")
-
-                            -- Perform your queries here
-                        end
+                        -- Load MySQL Lua library
+                        
 
                         function envoy_on_request(request_handle)
-                            -- Offload MySQL query to a coroutine
-                            local co = coroutine.create(perform_mysql_query)
-                            local success, result = coroutine.resume(co, request_handle)
-                            if not success then
-                                request_handle:logWarn("Coroutine creation error: ", result)
-                            end
+                            -- Your Lua code here
                         end
+                       
                   # HTTP router filter should be the last one
                   - name: envoy.filters.http.router
                     typed_config: 
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
-
   clusters:
     - name: web_service
       type: STRICT_DNS
