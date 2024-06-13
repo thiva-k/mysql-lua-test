@@ -1,24 +1,22 @@
-local luasql = require("luasql.mysql")
-os.execute("sleep 5")
 
--- Create MySQL connection
-local env = assert(luasql.mysql())
-local con = assert(env:connect("your_database", "your_user", "your_password", "mysql", 3306))
+local pgmoon = require("pgmoon")
+local pg = pgmoon.new({
+    host = "postgres",
+    port = "5432",
+    database = "mydb",
+    user = "postgres",
+    password = "root"
+  })
 
--- Query example (replace with your actual query)
-local query = "SELECT VERSION() AS version"
-local cur = assert(con:execute(query))
+  local ok, err = pg:connect()
 
--- Fetch the results
-local row = cur:fetch({}, "a")
-if row then
-    -- Print the result
-    print("MySQL version:", row.version)
-else
-    print("No results found for query:", query)
-end
 
--- Close the resources
-cur:close()
-con:close()
-env:close()
+print("Successfully connected to PostgreSQL")
+
+  local res, err = pg:query("SELECT 1")
+  if res then
+    print("Successfully executed test query.")
+  else
+    print("Failed to execute test query: " .. err)
+  end
+

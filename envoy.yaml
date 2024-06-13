@@ -24,24 +24,34 @@ static_resources:
                           route:
                             cluster: web_service
                 http_filters:
-                  # Ensure Lua filter is applied first
                   - name: envoy.filters.http.lua
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
                       inline_code: |
-
-                        package.cpath = package.cpath .. ';/usr/local/lib/lua/5.1/luasql/myysql.so'
-
-                        local mysql = require "luasql.mysql"
-
-                        -- Load MySQL Lua library
-                        
+                        local pgmoon = require("pgmoon")
 
                         function envoy_on_request(request_handle)
-                            -- Your Lua code here
+                          local pgmoon = require("pgmoon")
+                          local pg = pgmoon.new({
+                              host = "postgres",
+                              port = "5432",
+                              database = "mydb",
+                              user = "postgres",
+                              password = "root"
+                            })
+
+                            local ok, err = pg:connect()
+
+
+                          print("Successfully connected to PostgreSQL")
+
+                            local res, err = pg:query("SELECT 1")
+                            if res then
+                              print("Successfully executed test query.")
+                            else
+                              print("Failed to execute test query: " .. err)
+                            end
                         end
-                       
-                  # HTTP router filter should be the last one
                   - name: envoy.filters.http.router
                     typed_config: 
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router

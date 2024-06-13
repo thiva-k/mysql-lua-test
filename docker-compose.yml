@@ -1,22 +1,20 @@
 version: '3.8'
 
 services:
-  mysql:
-    image: mysql:latest
-    command: --mysql-native-password=ON
+  postgres:
+    image: postgres:latest
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: rate_limits
-    volumes:
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: mydb
     ports:
-      - "3306:3306"
+      - "5432:5432"
       
   lua:
     build:
       context: .
       dockerfile: Dockerfile_lua
     depends_on:
-      - mysql
+      - postgres
     ports:
       - "8000:8000"  # Map MySQL port
