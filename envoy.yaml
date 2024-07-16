@@ -30,10 +30,7 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua
                       inline_code: |
 
-                        package.cpath = package.cpath .. ';/usr/local/lib/lua/5.1/luasql/myysql.so'
-
                         local mysql = require "luasql.mysql"
-
                         -- Load MySQL Lua library
                         
 
