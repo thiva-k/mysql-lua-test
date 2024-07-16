@@ -31,7 +31,6 @@ static_resources:
                         local pgmoon = require("pgmoon")
 
                         function envoy_on_request(request_handle)
-                          local pgmoon = require("pgmoon")
                           local pg = pgmoon.new({
                               host = "postgres",
                               port = "5432",
