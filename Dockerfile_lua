@@ -1,46 +1,39 @@
-# Use Alpine Linux as a base image
 FROM frolvlad/alpine-glibc
 
-# Set environment variables for LuaRocks version
-ENV LUA_VERSION 5.1.5
-ENV LUAROCKS_VERSION=3.8.0
+# Install build dependencies and OpenSSL development libraries
+RUN apk update && \
+    apk add --no-cache \
+    gcc \
+    make \
+    musl-dev \
+    openssl-dev \
+    lua5.1-dev \
+    wget \
+    unzip \
+    openssl \
+    git \
+    mariadb-dev  # Add this line to install MySQL development files
 
-# # Install necessary dependencies
-RUN apk --no-cache add  mysql-dev  openssl mysql-client
+# Install LuaRocks
+RUN wget https://luarocks.org/releases/luarocks-3.8.0.tar.gz && \
+    tar zxpf luarocks-3.8.0.tar.gz && \
+    cd luarocks-3.8.0 && \
+    ./configure && \
+    make build && \
+    make install && \
+    cd .. && \
+    rm -rf luarocks-3.8.0 luarocks-3.8.0.tar.gz
 
-# # Download and install Lua
-# WORKDIR /lua-${LUA_VERSION}
-# RUN wget http://www.lua.org/ftp/lua-${LUA_VERSION}.tar.gz && \
-#     tar -zxf lua-${LUA_VERSION}.tar.gz && \
-#     cd lua-${LUA_VERSION} && \
-#     make linux test && \
-#     make install && \
-#     cd .. && \
-#     rm -rf lua-${LUA_VERSION} lua-${LUA_VERSION}.tar.gz
+# Install Lua libraries
+RUN luarocks install luasql-mysql MYSQL_INCDIR=/usr/include/mysql && \
+    luarocks install luasocket && \
+    luarocks install luabitop && \
+    luarocks install lua-cjson && \
+    luarocks install luaossl CRYPTO_DIR=/usr
 
-# # Install LuaRocks
-# WORKDIR /luarocks-$LUAROCKS_VERSION
-# RUN wget https://luarocks.github.io/luarocks/releases/luarocks-${LUAROCKS_VERSION}.tar.gz && \
-#     tar -zxf luarocks-${LUAROCKS_VERSION}.tar.gz && \
-#     cd luarocks-${LUAROCKS_VERSION} && \
-#     ./configure --with-lua=/usr/local --with-lua-include=/usr/local/include --with-lua-lib=/usr/local/lib && \
-#     make build && \
-#     make install && \
-#     cd .. && \
-#     rm -rf luarocks-${LUAROCKS_VERSION} luarocks-${LUAROCKS_VERSION}.tar.gz
+# Remove build dependencies (keep mariadb-dev if you need it at runtime)
+RUN apk del gcc make musl-dev wget
 
-# # Install MySQL development headers
-# RUN apk add --no-cache mariadb-dev
-
-# # Install luasql-mysql using LuaRocks
-# RUN luarocks install luasql-mysql MYSQL_INCDIR=/usr/include/mysql
-
-# # Set the working directory in the container
-# WORKDIR /usr/src/app
-
-# Copy your Lua script into the container
-COPY mysql.so /usr/local/lib/lua/5.1/luasql/mysql.so
-COPY mysql /usr/local/lib/lua/5.1/luasql/mysql
 COPY your_script.lua .
 
 # Copy Envoy binary into the container
@@ -52,3 +45,4 @@ COPY envoy.yaml /etc/envoy.yaml
 
 # Run Envoy
 CMD ["/envoy", "-l", "info", "-c", "/etc/envoy.yaml", "--service-node", "front-node", "--service-cluster", "front-cluster"]
+#CMD ["lua", "your_script.lua"]
