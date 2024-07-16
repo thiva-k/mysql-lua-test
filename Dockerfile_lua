@@ -1,24 +1,24 @@
 FROM frolvlad/alpine-glibc
 
-# Install build dependencies and OpenSSL development libraries
 RUN apk update && \
     apk add --no-cache \
     gcc \
     make \
     musl-dev \
     openssl-dev \
-    lua5.1-dev \
+    luajit \
+    luajit-dev \
     wget \
     unzip \
     openssl \
     git \
-    mariadb-dev  # Add this line to install MySQL development files
+    mariadb-dev
 
 # Install LuaRocks
 RUN wget https://luarocks.org/releases/luarocks-3.8.0.tar.gz && \
     tar zxpf luarocks-3.8.0.tar.gz && \
     cd luarocks-3.8.0 && \
-    ./configure && \
+    ./configure --with-lua-include=/usr/include/luajit-2.1 && \
     make build && \
     make install && \
     cd .. && \
@@ -27,22 +27,16 @@ RUN wget https://luarocks.org/releases/luarocks-3.8.0.tar.gz && \
 # Install Lua libraries
 RUN luarocks install luasql-mysql MYSQL_INCDIR=/usr/include/mysql && \
     luarocks install luasocket && \
-    luarocks install luabitop && \
     luarocks install lua-cjson && \
     luarocks install luaossl CRYPTO_DIR=/usr
 
-# Remove build dependencies (keep mariadb-dev if you need it at runtime)
+# Keep necessary runtime dependencies
 RUN apk del gcc make musl-dev wget
+RUN apk add --no-cache libstdc++ libgcc
 
 COPY your_script.lua .
-
-# Copy Envoy binary into the container
 COPY envoy /envoy
 RUN chmod +x /envoy
-
-# Copy Envoy configuration file
 COPY envoy.yaml /etc/envoy.yaml
 
-# Run Envoy
 CMD ["/envoy", "-l", "info", "-c", "/etc/envoy.yaml", "--service-node", "front-node", "--service-cluster", "front-cluster"]
-#CMD ["lua", "your_script.lua"]
